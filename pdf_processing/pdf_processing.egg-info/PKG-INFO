@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: pdf_processing
+Version: 0.1
+Requires-Dist: pymupdf
+Requires-Dist: psycopg2-binary
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: python-dotenv
+Requires-Dist: pytest
+Requires-Dist: sqlalchemy

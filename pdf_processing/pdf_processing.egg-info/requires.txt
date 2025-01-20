@@ -1,0 +1,7 @@
+pymupdf
+psycopg2-binary
+fastapi
+uvicorn
+python-dotenv
+pytest
+sqlalchemy

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Processed Documents</h1>
+    <ul class="document-list">
+        {% for doc in documents %}
+        <li>
+            <div class="document-info">
+                <a href="/view/{{ doc.id }}">{{ doc.file_name }}</a>
+                <span class="strategy-badge">{{ doc.strategy }}</span>
+                <span class="processed-date">Processed: {{ doc.processed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %} 

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="viewer-container">
+    <div class="toolbar">
+        <a href="/" class="nav-button">← Back to Overview</a>
+        <div class="toolbar-divider"></div>
+        <div class="current-doc-info">
+            <span class="doc-name">{{ document.file_name }}</span>
+            <span class="strategy-badge">{{ document.strategy }}</span>
+        </div>
+        <div class="toolbar-divider"></div>
+        <button onclick="syncScroll('pdf')" class="sync-button">Sync to PDF</button>
+        <button onclick="syncScroll('text')" class="sync-button">Sync to Text</button>
+    </div>
+    
+    <div class="split-view">
+        <div class="pdf-container" id="pdf-viewer">
+            <embed 
+                src="{{ pdf_path }}"
+                type="application/pdf"
+                width="100%"
+                height="100%"
+                style="border: none;"
+            >
+        </div>
+        
+        <div class="text-content-wrapper">
+            <div class="text-container" id="text-viewer">
+                {% for page_num, blocks in pages.items() %}
+                <div class="page" data-page="{{ page_num }}">
+                    <div class="page-header">Page {{ page_num }}</div>
+                    {% for block in blocks %}
+                    <div class="content-row">
+                        <div class="text-block {{ block.block_type }}" 
+                             style="font-size: {{ block.font_size }}px; color: {{ block.font_color }}">
+                            {{ block.text_content }}
+                        </div>
+                        <div class="category-indicator {{ block.block_type }}">
+                            {{ block.block_type }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
