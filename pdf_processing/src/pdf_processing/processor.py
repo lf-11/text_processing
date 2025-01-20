@@ -4,8 +4,12 @@ import re
 from datetime import datetime
 from typing import List, Dict, Any, Protocol
 from abc import ABC, abstractmethod
-from src.database.models import Document, TextBlock
+from src.database.models import Document, TextBlock, DocumentAnalysis, StyleStatistics
 from src.config.settings import PDF_FOLDER
+from src.pdf_processing.models import TextSpan
+from src.pdf_processing.text_analysis import TextAnalyzer
+from src.pdf_processing.extraction import DictMethodStrategy, BlocksMethodStrategy, WordsMethodStrategy
+from src.pdf_processing.analysis import TextAnalysisStrategy
 
 class TextExtractionStrategy(ABC):
     """Abstract base class for different text extraction strategies"""
@@ -44,161 +48,6 @@ class TextExtractionStrategy(ABC):
         
         return text.strip()
 
-class DictMethodStrategy(TextExtractionStrategy):
-    """Strategy using the 'dict' method from PyMuPDF"""
-    
-    def extract_text(self, page: fitz.Page) -> List[Dict[str, Any]]:
-        blocks_data = []
-        dict_blocks = page.get_text("dict")["blocks"]
-        page_height = page.rect.height
-        
-        # Sort blocks by y-position to maintain layout order
-        dict_blocks.sort(key=lambda b: (b["bbox"][1], b["bbox"][0]))
-        
-        for block in dict_blocks:
-            if "lines" not in block:
-                continue
-            
-            # Extract text content from all lines in the block
-            text_content = " ".join(
-                span["text"] for line in block["lines"] 
-                for span in line["spans"]
-            )
-            
-            # Skip empty blocks
-            if not text_content.strip():
-                continue
-            
-            # Get the first span's properties
-            first_span = block["lines"][0]["spans"][0]
-            y_position = block["bbox"][1]
-            
-            # Clean up text content
-            text_content = self._clean_text(text_content)
-            
-            blocks_data.append({
-                "text_content": text_content,
-                "bbox_coordinates": {
-                    "x0": block["bbox"][0],
-                    "y0": block["bbox"][1],
-                    "x1": block["bbox"][2],
-                    "y1": block["bbox"][3]
-                },
-                "font_size": first_span["size"],
-                "font_name": first_span["font"],
-                "font_color": self._get_color_string(first_span.get("color")),
-                "block_type": self._determine_block_type(
-                    first_span["size"], 
-                    y_position, 
-                    page_height
-                )
-            })
-        
-        return blocks_data
-
-class BlocksMethodStrategy(TextExtractionStrategy):
-    """Strategy using the 'blocks' method from PyMuPDF"""
-    
-    def extract_text(self, page: fitz.Page) -> List[Dict[str, Any]]:
-        blocks_data = []
-        raw_blocks = page.get_text("blocks", sort=True)
-        
-        for block in raw_blocks:
-            # block format: (x0, y0, x1, y1, "text", block_no, block_type)
-            x0, y0, x1, y1, text, _, _ = block
-            
-            # For this method, we don't have direct access to font properties
-            # We could use page.get_text("dict") specifically for getting font info
-            # of this block's coordinates, but for now we'll use defaults
-            blocks_data.append({
-                "text_content": text,
-                "bbox_coordinates": {
-                    "x0": x0,
-                    "y0": y0,
-                    "x1": x1,
-                    "y1": y1
-                },
-                "font_size": 12,  # default size
-                "font_name": "default",
-                "font_color": "#000000",
-                "block_type": "body"  # default type
-            })
-        
-        return blocks_data
-
-class WordsMethodStrategy(TextExtractionStrategy):
-    """Strategy using the 'words' method from PyMuPDF"""
-    
-    def extract_text(self, page: fitz.Page) -> List[Dict[str, Any]]:
-        blocks_data = []
-        words = page.get_text("words", sort=True)
-        page_height = page.rect.height
-        
-        current_block = self._create_empty_block()
-        
-        for word in words:
-            x0, y0, x1, y1, text, block_no, line_no, _ = word
-            
-            # Start new block if block number changes or significant y-position change
-            if (current_block["block_no"] is not None and 
-                (current_block["block_no"] != block_no or 
-                 abs(y0 - current_block["y0"]) > 20)):  # Adjust threshold as needed
-                
-                if current_block["text"]:
-                    blocks_data.append(self._create_block_data(
-                        current_block, page_height
-                    ))
-                current_block = self._create_empty_block()
-            
-            # Update current block
-            current_block["text"].append(text)
-            current_block["x0"] = min(current_block["x0"], x0)
-            current_block["y0"] = min(current_block["y0"], y0)
-            current_block["x1"] = max(current_block["x1"], x1)
-            current_block["y1"] = max(current_block["y1"], y1)
-            current_block["block_no"] = block_no
-            current_block["line_no"] = line_no
-        
-        # Don't forget to add the last block
-        if current_block["text"]:
-            blocks_data.append(self._create_block_data(current_block, page_height))
-        
-        return blocks_data
-    
-    def _create_empty_block(self) -> Dict:
-        return {
-            "text": [],
-            "x0": float('inf'),
-            "y0": float('inf'),
-            "x1": float('-inf'),
-            "y1": float('-inf'),
-            "block_no": None,
-            "line_no": None
-        }
-    
-    def _create_block_data(self, block: Dict, page_height: float) -> Dict[str, Any]:
-        """Create a standardized block data dictionary from accumulated words"""
-        # Clean up text content
-        text_content = self._clean_text(" ".join(block["text"]))
-        
-        return {
-            "text_content": text_content,
-            "bbox_coordinates": {
-                "x0": block["x0"],
-                "y0": block["y0"],
-                "x1": block["x1"],
-                "y1": block["y1"]
-            },
-            "font_size": 12,  # default size
-            "font_name": "default",
-            "font_color": "#000000",
-            "block_type": self._determine_block_type(
-                12,  # default font size
-                block["y0"],
-                page_height
-            )
-        }
-
 class PDFProcessor:
     """Main processor class that uses different extraction strategies"""
     
@@ -206,6 +55,7 @@ class PDFProcessor:
         "dict": DictMethodStrategy(),
         "blocks": BlocksMethodStrategy(),
         "words": WordsMethodStrategy(),
+        "analysis": TextAnalysisStrategy(),
     }
     
     def __init__(self, file_path: str, strategy_name: str = "dict"):
@@ -227,19 +77,53 @@ class PDFProcessor:
         )
         
         text_blocks = []
+        all_spans = []  # For analysis strategy
         
         for page_num in range(len(self.doc)):
             page = self.doc[page_num]
             blocks_data = self.strategy.extract_text(page)
             
             for block_data in blocks_data:
+                # Extract spans if present (for analysis strategy)
+                if isinstance(self.strategy, TextAnalysisStrategy):
+                    if '_spans' in block_data:
+                        all_spans.extend(block_data.pop('_spans'))
+                
                 text_block = TextBlock(
                     id=None,
-                    document_id=None,  # Will be set after document is saved
+                    document_id=None,
                     page_number=page_num + 1,
                     **block_data
                 )
                 text_blocks.append(text_block)
+        
+        # Generate analysis after processing all pages
+        if isinstance(self.strategy, TextAnalysisStrategy) and all_spans:
+            analysis_data = self.strategy.analyzer.analyze_spans(all_spans)
+            document_analysis = DocumentAnalysis(
+                document_id=None,
+                analysis_data=analysis_data
+            )
+            
+            style_stats = []
+            for style in analysis_data['common_styles']:
+                stat = StyleStatistics(
+                    document_id=None,
+                    font_name=style['font_name'],
+                    font_size=style['font_size'],
+                    font_color=style['font_color'],
+                    is_bold=style['is_bold'],
+                    is_italic=style['is_italic'],
+                    is_underlined=style['is_underlined'],
+                    occurrence_count=style['count'],
+                    examples=style.get('examples', []),
+                    page_distribution=style.get('page_distribution', []),
+                    y_range=style.get('y_range', {'min': 0, 'max': 0}),
+                    x_range=style.get('x_range', {'min': 0, 'max': 0})
+                )
+                style_stats.append(stat)
+            
+            return document, text_blocks, document_analysis, style_stats
         
         return document, text_blocks
     

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="analysis-container">
+    <div class="toolbar">
+        <a href="/view/{{ document.id }}" class="nav-button">← Back to Document</a>
+        <div class="toolbar-divider"></div>
+        <div class="current-doc-info">
+            <span class="doc-name">{{ document.file_name }} - Analysis</span>
+        </div>
+    </div>
+    
+    <div class="analysis-content">
+        <div class="style-statistics">
+            <h2>Common Text Styles</h2>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Font</th>
+                        <th>Size</th>
+                        <th>Font Color</th>
+                        <th>Fill Color</th>
+                        <th>Style</th>
+                        <th>Count</th>
+                        <th>Examples</th>
+                        <th>Page Distribution</th>
+                        <th>Position Range</th>
+                        <th>Preview</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in style_stats %}
+                    <tr>
+                        <td>{{ stat.font_name }}</td>
+                        <td>{{ stat.font_size }}</td>
+                        <td>
+                            <div class="color-preview font-color" style="color: {{ stat.font_color }}; background-color: #fff;">A</div>
+                            <span class="color-hex">{{ stat.font_color }}</span>
+                        </td>
+                        <td>
+                            <div class="color-preview fill-color" style="background-color: {{ stat.fill_color|default('#ffffff') }}"></div>
+                            <span class="color-hex">{{ stat.fill_color|default('none') }}</span>
+                        </td>
+                        <td>
+                            {% if stat.is_bold %}Bold{% endif %}
+                            {% if stat.is_italic %}Italic{% endif %}
+                        </td>
+                        <td>{{ stat.occurrence_count }}</td>
+                        <td class="examples-cell">
+                            {% if stat.examples %}
+                                {% for example in stat.examples %}
+                                    <div class="example-text">{{ example }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if stat.page_distribution %}
+                                Pages: {{ stat.page_distribution|join(', ') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if stat.y_range and stat.x_range %}
+                                Y: {{ "%.0f"|format(stat.y_range.min) }} - {{ "%.0f"|format(stat.y_range.max) }}<br>
+                                X: {{ "%.0f"|format(stat.x_range.min) }} - {{ "%.0f"|format(stat.x_range.max) }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-preview" 
+                                  style="font-family: {{ stat.font_name }}; 
+                                         font-size: {{ stat.font_size }}px;
+                                         color: {{ stat.font_color }};
+                                         {% if stat.is_bold %}font-weight: bold;{% endif %}
+                                         {% if stat.is_italic %}font-style: italic;{% endif %}">
+                                Sample Text
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if analysis %}
+        <div class="layout-metrics">
+            <h2>Layout Analysis</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Average Line Width</h3>
+                    <p>{{ "%.2f"|format(analysis.analysis_data.line_metrics.average_width) }}pt</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Left Margin</h3>
+                    <p>{{ "%.2f"|format(analysis.analysis_data.line_metrics.average_left_margin) }}pt</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="highlight-section">
+            <h2>Text Style Visualization</h2>
+            <p>View the document with different text styles highlighted in distinct colors.</p>
+            <a href="/analysis/{{ document.id }}/view-highlighted" class="highlight-button">
+                View Highlighted PDF
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

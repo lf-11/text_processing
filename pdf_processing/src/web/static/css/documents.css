@@ -1,0 +1,40 @@
+/* Document list specific styles */
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.document-list {
+    list-style: none;
+    padding: 0;
+}
+
+.document-list li {
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.document-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.document-list a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.document-list a:hover {
+    text-decoration: underline;
+}
+
+.processed-date {
+    color: #666;
+    font-size: 0.9em;
+    margin-left: 10px;
+}
+
+/* ... rest of document list specific styles ... */ 

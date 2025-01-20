@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="pdf_processing",
     version="0.1",
-    packages=find_packages(),
+    packages=find_packages() + ['scripts'],
     install_requires=[
         "pymupdf",
         "psycopg2-binary",

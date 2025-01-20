@@ -4,14 +4,12 @@ pdf_processing.egg-info/SOURCES.txt
 pdf_processing.egg-info/dependency_links.txt
 pdf_processing.egg-info/requires.txt
 pdf_processing.egg-info/top_level.txt
-src/__init__.py
-src/config/__init__.py
+scripts/__init__.py
+scripts/process_pdf.py
+scripts/setup_db.py
 src/config/settings.py
-src/database/__init__.py
 src/database/connection.py
 src/database/models.py
-src/pdf_processing/__init__.py
 src/pdf_processing/processor.py
-src/web/__init__.py
 tests/__init__.py
 tests/conftest.py

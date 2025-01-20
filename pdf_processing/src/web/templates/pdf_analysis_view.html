@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="viewer-container">
+    <div class="toolbar">
+        <a href="/analysis/{{ document.id }}" class="nav-button">← Back to Analysis</a>
+        <div class="toolbar-divider"></div>
+        <div class="current-doc-info">
+            <span class="doc-name">{{ document.file_name }} - Style Analysis</span>
+        </div>
+    </div>
+    
+    <div class="split-view">
+        <div class="pdf-container">
+            <embed 
+                src="/analysis/{{ document.id }}/highlighted-pdf"
+                type="application/pdf"
+                width="100%"
+                height="100%"
+                style="border: none;"
+            >
+        </div>
+        
+        <div class="legend-container">
+            <div class="style-legend">
+                <h3>Style Legend</h3>
+                <div class="legend-items">
+                    {% for stat in style_stats %}
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: {{ loop.index0|highlight_color }}"></div>
+                        <div class="legend-details">
+                            <div class="legend-header">
+                                <span class="legend-font">{{ stat.font_name }}</span>
+                                <span class="legend-size">{{ stat.font_size }}pt</span>
+                            </div>
+                            <div class="legend-style">
+                                {% if stat.is_bold %}Bold{% endif %}
+                                {% if stat.is_italic %}Italic{% endif %}
+                                {% if stat.is_bold or stat.is_italic %} | {% endif %}
+                                {{ stat.occurrence_count }} occurrences
+                            </div>
+                            <div class="legend-pages">
+                                Pages: {{ stat.page_distribution|join(', ') }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
